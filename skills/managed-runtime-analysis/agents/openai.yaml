@@ -1,0 +1,4 @@
+interface:
+  display_name: "Managed Runtime Analysis"
+  short_description: "Map .NET, Mono, JIT, and AOT runtime code"
+  default_prompt: "Use $managed-runtime-analysis to classify this managed deployment and map metadata methods to runtime code."

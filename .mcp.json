@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "reverseplugin": {
+      "type": "stdio",
+      "command": "${CURSOR_PLUGIN_ROOT}/build/release/Release/reverseplugin-mcp.exe",
+      "args": [],
+      "cwd": "${CURSOR_PLUGIN_ROOT}"
+    }
+  }
+}

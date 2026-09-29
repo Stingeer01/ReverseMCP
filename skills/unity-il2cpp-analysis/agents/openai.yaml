@@ -1,0 +1,4 @@
+interface:
+  display_name: "Unity IL2CPP Analysis"
+  short_description: "Recover Unity IL2CPP code and runtime types"
+  default_prompt: "Use $unity-il2cpp-analysis to map this Unity build from metadata to native runtime addresses."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Unreal Engine Analysis"
+  short_description: "Recover Unreal reflection and cooked assets"
+  default_prompt: "Use $unreal-engine-analysis to recover and validate this Unreal build's reflection model."

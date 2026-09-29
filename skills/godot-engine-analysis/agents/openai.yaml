@@ -1,0 +1,4 @@
+interface:
+  display_name: "Godot Engine Analysis"
+  short_description: "Map Godot reflection, scripts, and PCK data"
+  default_prompt: "Use $godot-engine-analysis to identify this Godot build and recover its scripts, resources, and native types."

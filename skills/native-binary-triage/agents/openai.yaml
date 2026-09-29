@@ -1,0 +1,4 @@
+interface:
+  display_name: "Native Binary Triage"
+  short_description: "Triage native binaries with traceable evidence"
+  default_prompt: "Use $native-binary-triage to characterize this binary and select the highest-value analysis anchors."

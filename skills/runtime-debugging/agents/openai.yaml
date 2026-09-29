@@ -1,0 +1,4 @@
+interface:
+  display_name: "Runtime Debugging"
+  short_description: "Trace native execution with minimal perturbation"
+  default_prompt: "Use $runtime-debugging to design and execute a reproducible breakpoint-driven investigation."

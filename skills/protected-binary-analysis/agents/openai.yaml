@@ -1,0 +1,4 @@
+interface:
+  display_name: "Protected Binary Analysis"
+  short_description: "Analyze packers and code transformations safely"
+  default_prompt: "Use $protected-binary-analysis to classify this binary's protections and design an evidence-driven recovery plan."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Source Engine Analysis"
+  short_description: "Recover Source interfaces, schemas, and entities"
+  default_prompt: "Use $source-engine-analysis to identify this Source build and validate its interfaces and entity schema."

@@ -1,0 +1,25 @@
+{
+  "name": "reverseplugin",
+  "version": "1.0.0",
+  "description": "Native PE analysis, process memory, and debugging tools exposed through MCP.",
+  "author": {
+    "name": "Stingeer01",
+    "url": "https://github.com/Stingeer01"
+  },
+  "license": "MIT",
+  "keywords": ["mcp", "reverse-engineering", "cpp23", "zydis", "il2cpp", "unreal", "godot"],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "ReverseMCP",
+    "shortDescription": "Native PE analysis and Windows debugging over MCP.",
+    "longDescription": "A native C++23 MCP server for static PE analysis, structured Zydis disassembly, function and cross-reference discovery, persistent annotations, validated process-memory access, stack walking, and Win32 debugging. Ten focused skills provide engine and runtime analysis workflows without coupling domain knowledge to the native server.",
+    "developerName": "Stingeer01",
+    "category": "Developer Tools",
+    "capabilities": ["Read", "Write"],
+    "defaultPrompt": [
+      "Open a PE binary and build a structured analysis plan.",
+      "Inspect a Windows process without modifying it."
+    ]
+  }
+}

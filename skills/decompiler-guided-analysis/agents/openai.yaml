@@ -1,0 +1,4 @@
+interface:
+  display_name: "Decompiler Guided Analysis"
+  short_description: "Recover semantics beyond decompiler guesses"
+  default_prompt: "Use $decompiler-guided-analysis to validate this function's control flow, types, and indirect calls."

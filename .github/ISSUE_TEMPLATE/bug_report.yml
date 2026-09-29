@@ -1,0 +1,76 @@
+name: Bug report
+description: Report a reproducible defect in the server, SDK, tests, or skills.
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Do not attach proprietary binaries, memory dumps, or unredacted secrets.
+
+  - type: input
+    id: version
+    attributes:
+      label: ReverseMCP version
+      description: Release tag or commit hash.
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Windows version, host architecture, target architecture, compiler, and MCP client.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - MCP transport or schema
+        - Static PE analysis
+        - Process memory
+        - Debugger or stack walking
+        - Cache or annotations
+        - Build, tests, or packaging
+        - Knowledge skill
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: Provide the smallest request sequence and a redistributable fixture where possible.
+      placeholder: |
+        1. Start reverseplugin-mcp.exe...
+        2. Call open_binary with...
+        3. Observe...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior and logs
+      description: Redact paths, tokens, symbols, and target data that cannot be shared.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I searched existing issues.
+          required: true
+        - label: I am authorized to inspect and share information about the target used in this report.
+          required: true
