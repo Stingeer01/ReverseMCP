@@ -6,6 +6,16 @@ This project follows Semantic Versioning. Dates use ISO 8601.
 
 No unreleased user-facing changes.
 
+## [1.1.0] - 2026-09-30
+
+### Added
+
+- Four IL2CPP tools for workspace lifecycle, filtered type inspection, and atomic JSONL export.
+- Strict compact `global-metadata.dat` v38/v39 parsing for images, types, fields, methods, and parameters.
+- Static x86-64 `GameAssembly.dll` code-registration discovery and method-token to native-RVA mapping.
+- File-identity workspace reuse and SHA-256 reporting for metadata and native images.
+- Synthetic metadata and token-mapping tests plus validation against a current Rust installation.
+
 ## [1.0.0] - 2026-09-29
 
 ### Added
@@ -18,5 +28,6 @@ No unreleased user-facing changes.
 - Ten composable analysis skills covering native binaries, protected code, managed runtimes, Unity IL2CPP, Unreal Engine, Godot, and Source.
 - SDK, MCP, cache, debugger integration, knowledge validation, and high-volume stress tests.
 
-[Unreleased]: https://github.com/Stingeer01/ReverseMCP/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/Stingeer01/ReverseMCP/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/Stingeer01/ReverseMCP/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/Stingeer01/ReverseMCP/releases/tag/v1.0.0

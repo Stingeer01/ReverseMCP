@@ -10,7 +10,7 @@ ReverseMCP is a native C++23 Model Context Protocol server for reverse-engineeri
 
 The repository contains both parts of the system:
 
-- a native execution layer with 40 bounded MCP tools;
+- a native execution layer with 44 bounded MCP tools;
 - a knowledge layer with focused skills for native binaries, debuggers, protected code, managed runtimes, and popular game engines.
 
 The executable and internal C++ namespace retain the name `reverseplugin` for compatibility. ReverseMCP is the project and distribution name.
@@ -19,7 +19,7 @@ The executable and internal C++ namespace retain the name `reverseplugin` for co
 
 General-purpose shell tools force an agent to parse unstable text output and repeatedly reconstruct analysis state. ReverseMCP exposes addresses, instructions, operands, references, registers, memory regions, and debugger events as typed JSON. Static results are keyed by the binary SHA-256, so an unchanged file can reuse previous function discovery, xrefs, strings, CFGs, names, comments, and types.
 
-ReverseMCP is intended for agent-driven investigations where a graphical disassembler is unavailable or unnecessary. It covers a substantial part of an IDA MCP workflow, but it does not claim feature parity with IDA Pro. Version 1.0 has no native decompiler, GUI database import, ELF/Mach-O loader, ARM decoder, or plugin bridge to an existing IDB.
+ReverseMCP is intended for agent-driven investigations where a graphical disassembler is unavailable or unnecessary. It covers a substantial part of an IDA MCP workflow, but it does not claim feature parity with IDA Pro. Version 1.1 has no native decompiler, GUI database import, ELF/Mach-O loader, ARM decoder, or plugin bridge to an existing IDB.
 
 ## Capabilities
 
@@ -56,6 +56,15 @@ ReverseMCP is intended for agent-driven investigations where a graphical disasse
 - Asynchronous debugger events; waiting never blocks the MCP input loop.
 - Register contexts, thread enumeration, ownership-tracked suspend/resume, and single-step.
 - DbgHelp stack walking with modules, symbols, displacements, instruction pointers, stack pointers, and frame pointers.
+
+### Unity IL2CPP
+
+- Compact `global-metadata.dat` v38/v39 parsing with strict section and record validation.
+- Static x86-64 `GameAssembly.dll` code-registration discovery without loading or executing the game.
+- Managed image, namespace, type, field, method, parameter, token, flag, and slot records.
+- Method-token resolution through per-image code-generation modules to native RVA and preferred VA.
+- Bounded filtered queries for interactive work and atomic JSONL export for complete dumps.
+- In-process workspace reuse keyed by canonical paths, sizes, and modification times; SHA-256 identities are returned for both inputs.
 
 ### Knowledge skills
 
@@ -140,6 +149,16 @@ Transport is newline-delimited JSON-RPC 2.0 over standard input and output. Diag
 
 All stable identities are RVAs. Virtual addresses are also returned for display. Addresses are serialized as hexadecimal strings to avoid JSON and model precision loss.
 
+### Dump a Unity IL2CPP build
+
+1. Call `open_il2cpp_workspace` with `global-metadata.dat` and the matching `GameAssembly.dll`.
+2. Select an image, namespace, or type with `dump_il2cpp_types`.
+3. Use each method's `native_rva` for static reads, xrefs, CFG recovery, and annotations in the ordinary PE workspace.
+4. Use `export_il2cpp_jsonl` for a complete streaming dump that does not retain a second JSON tree in memory.
+5. Call `close_il2cpp_workspace` when the metadata buffers are no longer needed.
+
+Native addresses are reported only when the code-generation module contains a file-backed pointer. Runtime-initialized pointers remain `null`; the server does not invent an address.
+
 ### Inspect a running process
 
 1. Narrow `list_processes` by executable name.
@@ -163,7 +182,7 @@ Read-only `session_id` values and debugger `debug_session_id` values have differ
 
 ## Tool reference
 
-ReverseMCP exposes 40 tools. [TOOLS.md](docs/TOOLS.md) groups them by lifecycle and documents their limits, mutability, and expected use. Every tool also publishes its exact input and output JSON Schemas through MCP `tools/list`; those runtime schemas are the canonical machine-readable contract.
+ReverseMCP exposes 44 tools. [TOOLS.md](docs/TOOLS.md) groups them by lifecycle and documents their limits, mutability, and expected use. Every tool also publishes its exact input and output JSON Schemas through MCP `tools/list`; those runtime schemas are the canonical machine-readable contract.
 
 ## Architecture
 
@@ -175,6 +194,7 @@ flowchart LR
     Tools --> Static[Immutable PE workspaces]
     Tools --> Memory[Validated process sessions]
     Tools --> Debugger[Dedicated debugger event loop]
+    Tools --> IL2CPP[IL2CPP metadata and code registration]
     Static --> Zydis[Zydis decoder]
     Memory --> Zydis
     Static --> Cache[SHA-256 persistent cache]
@@ -189,6 +209,7 @@ The boundaries are deliberate:
 - `src/process` and `src/memory` own Win32 handles, page validation, scans, and snapshots.
 - `src/debug` owns the debugger thread, breakpoints, register state, and stack walking.
 - `src/disasm` is the Zydis adapter.
+- `src/il2cpp` owns compact metadata parsing, PE registration discovery, module tables, and token-to-RVA mapping.
 - `skills` contains no native execution code.
 
 Read [ARCHITECTURE.md](docs/ARCHITECTURE.md) for ownership, concurrency, caching, and failure semantics.
@@ -236,7 +257,7 @@ The test prints local throughput and fails on lost results or invalid state. Num
 
 The release script performs a clean Release build, runs every CTest target, stages the executable, manifest, skills, documentation, and licenses, then writes a ZIP and SHA-256 checksum under `dist/`. Pushing a `v*` tag runs the same path in GitHub Actions and attaches both files to a GitHub release.
 
-See [RELEASE.md](docs/RELEASE.md) for the version 1.0 compatibility contract.
+See [RELEASE.md](docs/RELEASE.md) for the version 1.1 compatibility contract.
 
 ## Contributing
 

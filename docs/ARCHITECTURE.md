@@ -26,6 +26,14 @@ A tool returns `std::expected<Json, ToolError>`. Invalid external input is data,
 
 The static index and function analyzer are independent of MCP. They operate on RVAs and only derive virtual addresses from the preferred image base for presentation.
 
+### IL2CPP
+
+`Metadata` owns and validates compact Unity metadata v38/v39. Record readers decode only the requested image, type, field, method, or parameter, so filtered queries do not materialize the full object graph.
+
+`GameAssemblyInfo` is produced by a read-only PE mapping. Registration discovery follows data references from the core library name, verifies the metadata image cardinality, validates all code-generation modules, and stores native RVAs rather than mapped pointers. Method lookup is then constant-time by normalized image name and metadata token RID. Pointers backed only by a zero-filled runtime section remain unresolved.
+
+`WorkspaceStore` binds matching metadata and native images. Its cache identity includes canonical path, file size, and modification time for both inputs. JSONL export streams records to an atomic temporary file instead of constructing a complete dump in memory.
+
 ### Process and memory
 
 `ProcessManager` owns reusable Win32 handles through RAII sessions. Access rights are selected by the operation: normal attachment requests query/read access, while write operations still require the target pages themselves to be writable.
@@ -48,11 +56,12 @@ Skills are analysis procedures and domain models. They select tools, state invar
 
 ## State and identity
 
-There are three independent state scopes:
+There are four independent state scopes:
 
 1. A binary workspace is immutable and identified in-process by `binary_id`; persistent derived data is identified across runs by binary SHA-256.
 2. A process session is identified by `session_id` and owns a cached query/read handle.
 3. A debugger session is identified by `debug_session_id` and owns target execution state.
+4. An IL2CPP workspace is identified by `workspace_id` and owns immutable metadata plus an optional matching native-method map.
 
 Keeping process and debugger sessions separate prevents a read-only inspection from acquiring debugger privileges implicitly. It also makes cleanup explicit.
 

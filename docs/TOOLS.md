@@ -1,6 +1,6 @@
 # Tool reference
 
-ReverseMCP 1.0 exposes 40 MCP tools. Names and schemas are part of the public interface. The exact input and output schemas returned by `tools/list` take precedence over this human-readable guide.
+ReverseMCP 1.1 exposes 44 MCP tools. Names and schemas are part of the public interface. The exact input and output schemas returned by `tools/list` take precedence over this human-readable guide.
 
 ## Common conventions
 
@@ -73,6 +73,28 @@ Sets an analyst name, comment, or type expression at an address. Empty fields cl
 ### `get_binary_annotations`
 
 Returns paged annotations for the exact binary SHA-256. The default page size is 1000 and the maximum is 10,000.
+
+## Unity IL2CPP
+
+### `open_il2cpp_workspace`
+
+Opens compact `global-metadata.dat` version 38 or 39 and, when supplied, the matching x86-64 `GameAssembly.dll`. The native image is never loaded or executed. The parser locates the IL2CPP code-registration table, validates the code-generation module count against the metadata image count, and builds method-token to native-RVA tables. The response includes source SHA-256 values, metadata counts, images, preferred image base, code-registration RVA, and `workspace_id`.
+
+An unchanged pair of files is reused by canonical path, size, and modification time. Both files are read-only and individually capped at 2 GiB; compact metadata is capped at 512 MiB.
+
+### `dump_il2cpp_types`
+
+Returns a bounded page of types with optional exact image, namespace-substring, and type-name-substring filters. Fields include metadata type indices and tokens. Methods include parameters, flags, slots, return-type indices, and `native_rva`/`native_address` when the code-generation module has a static file-backed pointer. Runtime-initialized and absent pointers are `null`.
+
+The page limit is 2,000 types. Fields and methods have an independent per-type limit of 4,096 so very large generated types cannot produce an unbounded response.
+
+### `export_il2cpp_jsonl`
+
+Streams all types, or one exact image, to JSON Lines. The first record contains source identities and mapping status; each later record contains one complete type. Output goes to a temporary sibling and is atomically moved into place after a successful flush. Existing destinations require `overwrite: true`. Input metadata and `GameAssembly.dll` cannot be selected as the destination.
+
+### `close_il2cpp_workspace`
+
+Releases the metadata bytes and native mapping owned by `workspace_id`. Exported files are unaffected.
 
 ## Process lifecycle and memory map
 
@@ -197,6 +219,7 @@ Walks a paused thread through Windows unwind metadata and DbgHelp symbols. The d
 Most tools are read-only. The operations with side effects are:
 
 - `set_binary_annotation`, which changes the local content-addressed analysis cache;
+- `export_il2cpp_jsonl`, which creates or replaces the explicitly selected dump file;
 - `write_memory`, which changes already writable target memory;
 - debugger attach/detach, breakpoint, execution, and thread-control tools, which change target execution state;
 - lifecycle close, detach, and snapshot deletion tools, which release server-side resources.

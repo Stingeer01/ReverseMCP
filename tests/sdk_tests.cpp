@@ -59,6 +59,11 @@ void registry_exposes_server_info() {
   expect(registry.find("discover_binary_functions") != nullptr, "function discovery tool was not registered");
   expect(registry.find("set_binary_annotation") != nullptr, "annotation writer was not registered");
   expect(registry.find("get_binary_annotations") != nullptr, "annotation reader was not registered");
+  expect(registry.find("open_il2cpp_workspace") != nullptr, "IL2CPP loader was not registered");
+  expect(registry.find("dump_il2cpp_types") != nullptr, "IL2CPP type dumper was not registered");
+  expect(registry.find("export_il2cpp_jsonl") != nullptr, "IL2CPP exporter was not registered");
+  expect(registry.find("close_il2cpp_workspace") != nullptr, "IL2CPP close tool was not registered");
+  expect(registry.describe().size() == 44, "unexpected public tool count");
 }
 
 void server_handles_core_protocol() {
