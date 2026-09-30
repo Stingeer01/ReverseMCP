@@ -10,7 +10,7 @@ Read [references/triage-model.md](references/triage-model.md) when interpreting 
 ## Workflow
 
 1. Hash and identify the exact input before transformation. Preserve provenance for extracted or memory-dumped derivatives.
-2. Parse headers and loader metadata before disassembly. For PE inputs, use `open_binary` and `get_binary_index` to preserve RVA-stable sections, imports, exports, ordinals, IAT locations, and forwarders. Record architecture, endianness, image base, entry point, sections/segments, imports/exports, relocations, TLS/init arrays, unwind data, overlays, signatures, and debug identifiers.
+2. When the input belongs to a game installation, call `open_engine_workspace` first and retain its evidence-ranked engine profile and artifact IDs. Parse executable headers and loader metadata before disassembly. For PE inputs, use `open_binary` and `get_binary_index` to preserve RVA-stable sections, imports, exports, ordinals, IAT locations, and forwarders. Record architecture, endianness, image base, entry point, sections/segments, imports/exports, relocations, TLS/init arrays, unwind data, overlays, signatures, and debug identifiers.
 3. Infer toolchain/runtime from multiple independent signals: CRT/runtime imports, exception machinery, mangling, language metadata, section conventions, and library fingerprints.
 4. Score packing/obfuscation from converging evidence. High entropy alone is insufficient.
 5. Build an address map explicitly relating file offset, RVA, VA, and loaded module base.

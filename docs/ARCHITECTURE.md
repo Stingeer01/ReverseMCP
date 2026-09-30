@@ -34,6 +34,12 @@ The static index and function analyzer are independent of MCP. They operate on R
 
 `WorkspaceStore` binds matching metadata and native images. Its cache identity includes canonical path, file size, and modification time for both inputs. JSONL export streams records to an atomic temporary file instead of constructing a complete dump in memory.
 
+### Engine discovery
+
+The engine workspace walks a caller-selected installation root with explicit depth and count budgets. It skips symlinks and reparse-point targets, stores only recognized artifacts, and ranks engines from independent one-time signals so thousands of identically typed packages cannot dominate detection.
+
+Artifact IDs are workspace-local. Inspection resolves the current canonical path again, verifies that it remains inside the workspace, and rejects files whose size changed after indexing. Container inspection reads only fixed-size header/trailer windows. Deep package parsing and decryption belong in format-specific modules rather than the detector.
+
 ### Process and memory
 
 `ProcessManager` owns reusable Win32 handles through RAII sessions. Access rights are selected by the operation: normal attachment requests query/read access, while write operations still require the target pages themselves to be writable.
@@ -56,12 +62,13 @@ Skills are analysis procedures and domain models. They select tools, state invar
 
 ## State and identity
 
-There are four independent state scopes:
+There are five independent state scopes:
 
 1. A binary workspace is immutable and identified in-process by `binary_id`; persistent derived data is identified across runs by binary SHA-256.
 2. A process session is identified by `session_id` and owns a cached query/read handle.
 3. A debugger session is identified by `debug_session_id` and owns target execution state.
 4. An IL2CPP workspace is identified by `workspace_id` and owns immutable metadata plus an optional matching native-method map.
+5. An engine workspace is also identified by `workspace_id`, but belongs to an independent store and owns only a bounded read-only artifact index.
 
 Keeping process and debugger sessions separate prevents a read-only inspection from acquiring debugger privileges implicitly. It also makes cleanup explicit.
 

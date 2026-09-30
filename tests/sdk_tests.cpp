@@ -63,7 +63,11 @@ void registry_exposes_server_info() {
   expect(registry.find("dump_il2cpp_types") != nullptr, "IL2CPP type dumper was not registered");
   expect(registry.find("export_il2cpp_jsonl") != nullptr, "IL2CPP exporter was not registered");
   expect(registry.find("close_il2cpp_workspace") != nullptr, "IL2CPP close tool was not registered");
-  expect(registry.describe().size() == 44, "unexpected public tool count");
+  expect(registry.find("open_engine_workspace") != nullptr, "engine detector was not registered");
+  expect(registry.find("list_engine_artifacts") != nullptr, "engine artifact index was not registered");
+  expect(registry.find("inspect_engine_artifact") != nullptr, "engine artifact inspector was not registered");
+  expect(registry.find("close_engine_workspace") != nullptr, "engine workspace close tool was not registered");
+  expect(registry.describe().size() == 48, "unexpected public tool count");
 }
 
 void server_handles_core_protocol() {

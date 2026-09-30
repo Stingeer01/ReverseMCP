@@ -1,6 +1,6 @@
 # Tool reference
 
-ReverseMCP 1.1 exposes 44 MCP tools. Names and schemas are part of the public interface. The exact input and output schemas returned by `tools/list` take precedence over this human-readable guide.
+ReverseMCP 1.2 exposes 48 MCP tools. Names and schemas are part of the public interface. The exact input and output schemas returned by `tools/list` take precedence over this human-readable guide.
 
 ## Common conventions
 
@@ -73,6 +73,26 @@ Sets an analyst name, comment, or type expression at an address. Empty fields cl
 ### `get_binary_annotations`
 
 Returns paged annotations for the exact binary SHA-256. The default page size is 1000 and the maximum is 10,000.
+
+## Game-engine workspaces
+
+### `open_engine_workspace`
+
+Recursively scans a game installation without executing files. Independent filename, layout, metadata, module, script, and container signals produce ranked candidates for Unity, Unreal Engine, Godot, Source, Source 2, CRYENGINE, and Cocos2d-x. The selected `engine` is withheld as `unknown` when top scores tie. Unity workspaces additionally report `mono`, `il2cpp`, or `unknown` as the scripting backend.
+
+Traversal is bounded by `max_depth`, `max_files`, and `max_artifacts`. Reparse-point and symbolic-link targets are not followed. The response reports truncation explicitly, retains evidence strings with source paths, and groups recognized artifacts without reading complete container contents.
+
+### `list_engine_artifacts`
+
+Pages through native modules, managed assemblies, containers, cooked assets, configuration, metadata, symbols, scripts, and shaders. Results can be filtered by exact category, exact format label, and case-insensitive path substring. Artifact paths remain relative to the canonical workspace root.
+
+### `inspect_engine_artifact`
+
+Revalidates an indexed file's canonical location and size before reading bounded header and trailer samples. It recognizes PE signatures, Valve VPK version/tree headers, and Godot PCK v2-v4 headers at the start of a file or embedded in an executable. Godot results include pack offset, version tuple, and raw flags. Unreal PAK and IoStore files are classified conservatively by artifact family; protected indexes are not decrypted or fabricated.
+
+### `close_engine_workspace`
+
+Releases the in-memory artifact index. It does not modify the installation.
 
 ## Unity IL2CPP
 

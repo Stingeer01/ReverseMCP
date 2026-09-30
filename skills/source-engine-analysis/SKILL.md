@@ -9,12 +9,13 @@ Read [references/source-model.md](references/source-model.md) before transferrin
 
 ## Workflow
 
-1. Identify engine generation, game branch/build, platform, architecture, and client/server/tool module inventory.
-2. Enumerate exported interfaces and trace `CreateInterface` registrations before signature-scanning private globals.
-3. Source 1: recover entities through client/server class metadata, recv/send tables, and datamaps. Source 2: prefer SchemaSystem class/field metadata.
-4. Validate field offsets using several live instances, type/range invariants, and access-site disassembly.
-5. Keep simulation state, render state, networking state, and resource identifiers distinct even when names overlap.
-6. Analyze VPK/maps/resources as a separate layer and retain paths, hashes, resource type, and build compatibility.
+1. Call `open_engine_workspace` on the game root. Use the ranked candidates and evidence to distinguish Source from Source 2; `gameinfo.txt`/`engine.dll` and `gameinfo.gi`/`engine2.dll`/`schemasystem.dll` are not interchangeable.
+2. Use `list_engine_artifacts` for module and VPK/resource inventory, and `inspect_engine_artifact` to validate the VPK header before assuming an archive version.
+3. Enumerate exported interfaces and trace `CreateInterface` registrations before signature-scanning private globals.
+4. Source 1: recover entities through client/server class metadata, recv/send tables, and datamaps. Source 2: prefer SchemaSystem class/field metadata.
+5. Validate field offsets using several live instances, type/range invariants, and access-site disassembly.
+6. Keep simulation state, render state, networking state, and resource identifiers distinct even when names overlap.
+7. Analyze VPK/maps/resources as a separate layer and retain paths, hashes, resource type, and build compatibility.
 
 ## Output and done
 

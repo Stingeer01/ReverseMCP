@@ -69,7 +69,8 @@ class ServerInfoTool final : public mcp::Tool {
                                                    "stack_walking", "symbols", "pe_loader",
                                                    "static_cfg", "function_index", "xrefs",
                                                    "string_index", "annotations", "persistent_cache",
-                                                   "il2cpp_v38_v39", "il2cpp_native_mapping"})}};
+                                                   "il2cpp_v38_v39", "il2cpp_native_mapping",
+                                                   "engine_detection", "engine_artifact_index"})}};
   }
 };
 
@@ -101,6 +102,7 @@ void register_binary_analysis_tools(
     mcp::ToolRegistry& registry,
     const std::shared_ptr<disasm::Disassembler>& disassembler);
 void register_il2cpp_tools(mcp::ToolRegistry& registry);
+void register_engine_tools(mcp::ToolRegistry& registry);
 
 void register_builtin_tools(
     mcp::ToolRegistry& registry,
@@ -118,6 +120,7 @@ void register_builtin_tools(
   register_debug_execution_tools(registry, debugger);
   register_debug_stack_tools(registry, debugger);
   register_binary_analysis_tools(registry, disassembler);
+  register_engine_tools(registry);
   register_il2cpp_tools(registry);
 }
 

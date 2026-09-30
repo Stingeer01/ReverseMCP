@@ -9,12 +9,13 @@ Read [references/unreal-model.md](references/unreal-model.md) before interpretin
 
 ## Workflow
 
-1. Establish UE generation, platform, architecture, build configuration, and whether symbols, mappings, PDB paths, crash metadata, or version strings survive.
-2. Separate reflection/runtime work from cooked-asset work. Normalize module-relative addresses.
-3. Recover and validate name storage, the global object array, object/class relationships, and reflection field chains before generating SDK-like output.
-4. Validate candidates with invariants: readable aligned pointers, stable indices, plausible name decoding, class ancestry, object flags, and cross-references from known engine routines.
-5. Find behavior through reflected `UFunction` metadata and `ProcessEvent`, then correlate native function pointers or Blueprint bytecode where applicable.
-6. For assets, inventory PAK versus IoStore and require the matching engine version and mappings for unversioned properties.
+1. Call `open_engine_workspace` on the game root. Confirm the Unreal candidate score from more than a `.pak` extension, then use `list_engine_artifacts` to inventory native modules, PDBs, AssetRegistry, cooked assets, PAK, and paired UTOC/UCAS files.
+2. Inspect representative containers with `inspect_engine_artifact`. This identifies the container family and bounded header/trailer bytes; it does not decrypt indexes or claim to enumerate encrypted content. Establish UE generation, platform, architecture, and build configuration from independent binary or configuration evidence.
+3. Separate reflection/runtime work from cooked-asset work. Normalize module-relative addresses.
+4. Recover and validate name storage, the global object array, object/class relationships, and reflection field chains before generating SDK-like output.
+5. Validate candidates with invariants: readable aligned pointers, stable indices, plausible name decoding, class ancestry, object flags, and cross-references from known engine routines.
+6. Find behavior through reflected `UFunction` metadata and `ProcessEvent`, then correlate native function pointers or Blueprint bytecode where applicable.
+7. For assets, require the matching engine version and mappings for unversioned properties.
 
 Use hardware breakpoints for hot reflection structures where code patching is undesirable. Avoid scanning the entire address space when module/section bounds are known.
 

@@ -9,7 +9,7 @@ Identify the scripting backend and Unity generation before assuming layouts. Rea
 
 ## Workflow
 
-1. Inventory the executable, `UnityPlayer`, `GameAssembly.dll` or `libil2cpp`, `global-metadata.dat`, `*_Data`, managed assemblies, asset bundles, and platform/architecture.
+1. Call `open_engine_workspace` on the game root, confirm the Unity evidence and reported Mono/IL2CPP backend, then use `list_engine_artifacts` to inventory the executable, `UnityPlayer`, `GameAssembly.dll` or `libil2cpp`, metadata, managed assemblies, asset bundles, and platform modules.
 2. Classify Mono versus IL2CPP. Treat dummy assemblies as metadata projections, never recovered source code.
 3. Establish the image base and distinguish VA, RVA, file offset, metadata index, token, and method pointer in every result.
 4. For compact metadata v38/v39 on Windows x86-64, call `open_il2cpp_workspace` with the matching metadata and `GameAssembly.dll`. Use `dump_il2cpp_types` for bounded investigation or `export_il2cpp_jsonl` for a complete dump. Use runtime observation only when registration, metadata, or code is transformed after load.

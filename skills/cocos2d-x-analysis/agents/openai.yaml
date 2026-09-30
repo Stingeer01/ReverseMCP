@@ -1,0 +1,4 @@
+interface:
+  display_name: "Cocos2d-x Analysis"
+  short_description: "Recover Cocos2d-x native scenes, ownership, and script bindings"
+  default_prompt: "Use $cocos2d-x-analysis to identify this Cocos2d-x build and map its scene and scripting boundaries."

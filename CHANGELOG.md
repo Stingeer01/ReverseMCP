@@ -6,6 +6,16 @@ This project follows Semantic Versioning. Dates use ISO 8601.
 
 No unreleased user-facing changes.
 
+## [1.2.0] - 2026-09-30
+
+### Added
+
+- Four bounded game-engine workspace tools for detection, artifact indexing, signature inspection, and lifecycle cleanup.
+- Evidence-ranked support for Unity, Unreal Engine, Godot, Source, Source 2, CRYENGINE, and Cocos2d-x installations.
+- PE, Valve VPK, and standalone or executable-embedded Godot PCK header inspection.
+- CRYENGINE and Cocos2d-x analysis Skills, plus native-tool routing in the Unity, Unreal, Godot, Source, and triage Skills.
+- Synthetic Unity, Source 2, and Godot engine-workspace tests.
+
 ## [1.1.0] - 2026-09-30
 
 ### Added
@@ -28,6 +38,7 @@ No unreleased user-facing changes.
 - Ten composable analysis skills covering native binaries, protected code, managed runtimes, Unity IL2CPP, Unreal Engine, Godot, and Source.
 - SDK, MCP, cache, debugger integration, knowledge validation, and high-volume stress tests.
 
-[Unreleased]: https://github.com/Stingeer01/ReverseMCP/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/Stingeer01/ReverseMCP/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/Stingeer01/ReverseMCP/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/Stingeer01/ReverseMCP/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/Stingeer01/ReverseMCP/releases/tag/v1.0.0

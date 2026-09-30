@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.25)
 
-project(reverseplugin VERSION 1.1.0 LANGUAGES CXX)
+project(reverseplugin VERSION 1.2.0 LANGUAGES CXX)
 
 if(NOT WIN32)
   message(FATAL_ERROR "ReversePlugin process introspection currently requires Windows")
@@ -49,6 +49,8 @@ add_library(reverseplugin_sdk STATIC
   src/debug/debug_context.cpp
   src/debug/stack_walker.cpp
   src/disasm/zydis_disassembler.cpp
+  src/engine/artifact_inspector.cpp
+  src/engine/workspace.cpp
   src/il2cpp/game_assembly.cpp
   src/il2cpp/metadata.cpp
   src/il2cpp/workspace_store.cpp
@@ -62,6 +64,7 @@ add_library(reverseplugin_sdk STATIC
   src/tools/binary_analysis_tools.cpp
   src/tools/binary_navigation_tools.cpp
   src/tools/binary_index_tools.cpp
+  src/tools/engine_tools.cpp
   src/tools/il2cpp_tools.cpp
   src/tools/server_info.cpp
 )
@@ -98,6 +101,10 @@ if(BUILD_TESTING)
   add_executable(reverseplugin-il2cpp-tests tests/il2cpp_tests.cpp)
   target_link_libraries(reverseplugin-il2cpp-tests PRIVATE reverseplugin_sdk)
   add_test(NAME reverseplugin-il2cpp-tests COMMAND reverseplugin-il2cpp-tests)
+
+  add_executable(reverseplugin-engine-tests tests/engine_tests.cpp)
+  target_link_libraries(reverseplugin-engine-tests PRIVATE reverseplugin_sdk)
+  add_test(NAME reverseplugin-engine-tests COMMAND reverseplugin-engine-tests)
 
   add_executable(reverseplugin-debug-target tests/debug_target.cpp)
 

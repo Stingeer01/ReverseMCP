@@ -10,7 +10,7 @@ ReverseMCP is a native C++23 Model Context Protocol server for reverse-engineeri
 
 The repository contains both parts of the system:
 
-- a native execution layer with 44 bounded MCP tools;
+- a native execution layer with 48 bounded MCP tools;
 - a knowledge layer with focused skills for native binaries, debuggers, protected code, managed runtimes, and popular game engines.
 
 The executable and internal C++ namespace retain the name `reverseplugin` for compatibility. ReverseMCP is the project and distribution name.
@@ -19,7 +19,7 @@ The executable and internal C++ namespace retain the name `reverseplugin` for co
 
 General-purpose shell tools force an agent to parse unstable text output and repeatedly reconstruct analysis state. ReverseMCP exposes addresses, instructions, operands, references, registers, memory regions, and debugger events as typed JSON. Static results are keyed by the binary SHA-256, so an unchanged file can reuse previous function discovery, xrefs, strings, CFGs, names, comments, and types.
 
-ReverseMCP is intended for agent-driven investigations where a graphical disassembler is unavailable or unnecessary. It covers a substantial part of an IDA MCP workflow, but it does not claim feature parity with IDA Pro. Version 1.1 has no native decompiler, GUI database import, ELF/Mach-O loader, ARM decoder, or plugin bridge to an existing IDB.
+ReverseMCP is intended for agent-driven investigations where a graphical disassembler is unavailable or unnecessary. It covers a substantial part of an IDA MCP workflow, but it does not claim feature parity with IDA Pro. Version 1.2 has no native decompiler, GUI database import, ELF/Mach-O loader, ARM decoder, or plugin bridge to an existing IDB.
 
 ## Capabilities
 
@@ -66,6 +66,15 @@ ReverseMCP is intended for agent-driven investigations where a graphical disasse
 - Bounded filtered queries for interactive work and atomic JSONL export for complete dumps.
 - In-process workspace reuse keyed by canonical paths, sizes, and modification times; SHA-256 identities are returned for both inputs.
 
+### Game-engine workspaces
+
+- Evidence-ranked detection for Unity, Unreal Engine, Godot, Source, Source 2, CRYENGINE, and Cocos2d-x.
+- Read-only bounded traversal with explicit depth, examined-file, and retained-artifact limits.
+- Structured indexes for native modules, managed assemblies, containers, cooked assets, metadata, symbols, scripts, shaders, and configuration.
+- Header validation for PE, Valve VPK, and standalone or executable-embedded Godot PCK files.
+- Explicit PAK and Unreal IoStore classification without pretending to decrypt or enumerate protected container indexes.
+- Engine-specific Skills route the artifact inventory into reflection, runtime, and static-binary workflows.
+
 ### Knowledge skills
 
 The native server performs deterministic work. Skills describe how an agent should combine those primitives and how to validate version-sensitive assumptions.
@@ -79,6 +88,8 @@ The native server performs deterministic work. Skills describe how an agent shou
 - `unreal-engine-analysis` — UObject reflection, names, object arrays, functions, Blueprints, PAK, and IoStore.
 - `godot-engine-analysis` — ClassDB, Object/Variant, GDScript, GDExtension, resources, and PCK.
 - `source-engine-analysis` — Source and Source 2 interfaces, entities, network metadata, schemas, BSP, and VPK.
+- `cryengine-analysis` — CrySystem, gEnv subsystems, entities, plugins, configuration, levels, and CryPak.
+- `cocos2d-x-analysis` — Cocos2d-x native scenes, Ref ownership, resources, and Lua/JavaScript bindings.
 - `managed-runtime-analysis` — CLI metadata, .NET and Mono JIT, ReadyToRun, trimming, single-file applications, and NativeAOT.
 
 See [the knowledge-base design](docs/KNOWLEDGE_BASE.md) for the source and extension policy.
@@ -115,7 +126,8 @@ Run the complete test suite independently with:
 ctest --preset release
 ```
 
-The test preset covers MCP framing and schemas, PE parsing, cache round-trips, CFG recovery, memory access, Zydis decoding, stack walking, a real child-process debugger integration test, all ten skills, and the stress suite.
+The test preset covers MCP framing and schemas, PE parsing, cache round-trips, CFG recovery, memory access, Zydis decoding, stack walking, a real child-process debugger integration test, all twelve skills, and the stress suite.
+The engine suite also validates Unity IL2CPP, Source 2, and Godot PCK detection using isolated fixtures.
 
 ## Connect an MCP client
 
@@ -159,6 +171,14 @@ All stable identities are RVAs. Virtual addresses are also returned for display.
 
 Native addresses are reported only when the code-generation module contains a file-backed pointer. Runtime-initialized pointers remain `null`; the server does not invent an address.
 
+### Identify and inventory another engine
+
+1. Call `open_engine_workspace` with the game installation root.
+2. Review every candidate and its evidence instead of trusting the top label in isolation.
+3. Filter modules, packages, metadata, scripts, or symbols with `list_engine_artifacts`.
+4. Validate a selected file with `inspect_engine_artifact`; pass PE modules to `open_binary` for code analysis.
+5. Continue through the matching engine Skill, then release the index with `close_engine_workspace`.
+
 ### Inspect a running process
 
 1. Narrow `list_processes` by executable name.
@@ -182,7 +202,7 @@ Read-only `session_id` values and debugger `debug_session_id` values have differ
 
 ## Tool reference
 
-ReverseMCP exposes 44 tools. [TOOLS.md](docs/TOOLS.md) groups them by lifecycle and documents their limits, mutability, and expected use. Every tool also publishes its exact input and output JSON Schemas through MCP `tools/list`; those runtime schemas are the canonical machine-readable contract.
+ReverseMCP exposes 48 tools. [TOOLS.md](docs/TOOLS.md) groups them by lifecycle and documents their limits, mutability, and expected use. Every tool also publishes its exact input and output JSON Schemas through MCP `tools/list`; those runtime schemas are the canonical machine-readable contract.
 
 ## Architecture
 
@@ -195,6 +215,7 @@ flowchart LR
     Tools --> Memory[Validated process sessions]
     Tools --> Debugger[Dedicated debugger event loop]
     Tools --> IL2CPP[IL2CPP metadata and code registration]
+    Tools --> Engines[Engine artifact workspaces]
     Static --> Zydis[Zydis decoder]
     Memory --> Zydis
     Static --> Cache[SHA-256 persistent cache]
@@ -210,6 +231,7 @@ The boundaries are deliberate:
 - `src/debug` owns the debugger thread, breakpoints, register state, and stack walking.
 - `src/disasm` is the Zydis adapter.
 - `src/il2cpp` owns compact metadata parsing, PE registration discovery, module tables, and token-to-RVA mapping.
+- `src/engine` owns bounded installation scanning, evidence-ranked detection, artifact classification, and signature inspection.
 - `skills` contains no native execution code.
 
 Read [ARCHITECTURE.md](docs/ARCHITECTURE.md) for ownership, concurrency, caching, and failure semantics.
@@ -257,7 +279,7 @@ The test prints local throughput and fails on lost results or invalid state. Num
 
 The release script performs a clean Release build, runs every CTest target, stages the executable, manifest, skills, documentation, and licenses, then writes a ZIP and SHA-256 checksum under `dist/`. Pushing a `v*` tag runs the same path in GitHub Actions and attaches both files to a GitHub release.
 
-See [RELEASE.md](docs/RELEASE.md) for the version 1.1 compatibility contract.
+See [RELEASE.md](docs/RELEASE.md) for the version 1.2 compatibility contract.
 
 ## Contributing
 

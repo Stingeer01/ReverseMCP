@@ -1,0 +1,4 @@
+interface:
+  display_name: "CRYENGINE Analysis"
+  short_description: "Map CRYENGINE modules, subsystems, entities, and CryPak content"
+  default_prompt: "Use $cryengine-analysis to inventory this CRYENGINE build and recover its validated native interfaces."

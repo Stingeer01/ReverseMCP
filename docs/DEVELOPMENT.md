@@ -14,6 +14,7 @@ ctest --preset release
 
 - `include/reverseplugin` — public SDK headers.
 - `src/analysis` — PE images, indexes, function analysis, and persistent cache.
+- `src/engine` — bounded game-installation discovery and artifact signature inspection.
 - `src/debug` — debugger state and stack walking.
 - `src/disasm` — decoder adapter.
 - `src/mcp` — transport and tool registry.

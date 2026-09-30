@@ -11,6 +11,8 @@ description: Route authorized reverse-engineering work through ReversePlugin's s
 - Unreal Engine, UObject reflection, PAK/IoStore, or UAsset: use `unreal-engine-analysis`.
 - Godot, PCK, GDScript, ClassDB, or GDExtension: use `godot-engine-analysis`.
 - Source/Source 2, `CreateInterface`, entity tables/schema, BSP, or VPK: use `source-engine-analysis`.
+- CRYENGINE, CrySystem, CryPak, GameSDK, or `.cryproject`: use `cryengine-analysis`.
+- Cocos2d-x, cocos2d native libraries, `cocos2d::Ref`, Lua, or JavaScript bindings: use `cocos2d-x-analysis`.
 - .NET, Mono, ReadyToRun, trimmed, single-file, or NativeAOT: use `managed-runtime-analysis`.
 - Unknown PE/ELF/Mach-O or toolchain identification: use `native-binary-triage`.
 - Packers, self-modification, anti-debugging, flattening, or virtualized code: use `protected-binary-analysis`.
@@ -20,6 +22,8 @@ description: Route authorized reverse-engineering work through ReversePlugin's s
 Combine skills only when their domains truly overlap. Keep one shared evidence ledger so names, hashes, module bases, address forms, and confidence do not diverge between phases.
 
 Use `get_server_info` first when the available native modules are unknown. Only call tools listed by the server; a module absent from `modules` is not available in the current build.
+
+For an unknown game directory, call `open_engine_workspace` before selecting an engine skill. Treat `engine` and `confidence` as a ranked artifact-based hypothesis: inspect `evidence` and `candidates`, especially when several engines use `.pak` or `.dll` files. Use `list_engine_artifacts` to choose exact native modules and containers, `inspect_engine_artifact` for bounded signature validation, and `close_engine_workspace` after the index is no longer needed.
 
 For static PE analysis, call `open_binary` once and retain `binary_id`. Inspect sections, imports, and exports with `get_binary_index`; index strings and functions with `find_binary_strings` and `discover_binary_functions`; use `find_binary_xrefs` for callers and data users; then call `analyze_binary_function` at evidence-backed seeds. Use `read_binary_bytes`, `disassemble_binary`, and `scan_binary_pattern` for targeted verification. Preserve recovered names, comments, and type hypotheses with binary annotations. Treat recursive discovery as bounded evidence, not proof that every byte is code. Results are keyed by the binary SHA-256 fingerprint and may be served from persistent cache. Call `close_binary` when the in-memory workspace is no longer needed.
 
