@@ -4,9 +4,10 @@
 [![C++23](https://img.shields.io/badge/C%2B%2B-23-00599C)](https://en.cppreference.com/w/cpp/23)
 [![MCP](https://img.shields.io/badge/protocol-MCP-6B57FF)](https://modelcontextprotocol.io/)
 [![CI](https://github.com/Stingeer01/ReverseMCP/actions/workflows/ci.yml/badge.svg)](https://github.com/Stingeer01/ReverseMCP/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/Stingeer01/ReverseMCP)](https://github.com/Stingeer01/ReverseMCP/releases/latest)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-ReverseMCP is a native C++23 Model Context Protocol server for reverse-engineering work on Windows. It gives an MCP client structured access to PE files, live process memory, x86/x64 disassembly, breakpoints, thread state, stack traces, and persistent analyst annotations.
+ReverseMCP is a native C++23 Model Context Protocol server for reverse-engineering work on Windows. It gives an MCP client structured access to PE files, game-engine installations, Unity IL2CPP metadata, live process memory, x86/x64 disassembly, breakpoints, thread state, stack traces, and persistent analyst annotations.
 
 The repository contains both parts of the system:
 
@@ -14,6 +15,26 @@ The repository contains both parts of the system:
 - a knowledge layer with focused skills for native binaries, debuggers, protected code, managed runtimes, and popular game engines.
 
 The executable and internal C++ namespace retain the name `reverseplugin` for compatibility. ReverseMCP is the project and distribution name.
+
+## At a glance
+
+- 48 MCP tools with explicit input and output JSON Schemas.
+- 12 focused analysis Skills.
+- Static PE analysis and Zydis-backed x86/x64 disassembly.
+- Unity IL2CPP metadata v38/v39 with token-to-native-RVA mapping.
+- Installation discovery for seven engine families.
+- Validated process-memory access and a native Windows debugger.
+- Content-addressed analysis cache and persistent annotations.
+- No IDA Pro, Python runtime, injected DLL, or game launch required for static workflows.
+
+## Download
+
+Prebuilt Windows releases contain the MCP executable, plugin manifest, Skills, documentation, and third-party notices:
+
+- [Download the latest release](https://github.com/Stingeer01/ReverseMCP/releases/latest)
+- [View the v1.2.0 release notes and checksums](https://github.com/Stingeer01/ReverseMCP/releases/tag/v1.2.0)
+
+Extract the archive and point the MCP client at `build/release/Release/reverseplugin-mcp.exe`. Build from source when changing the SDK or native tools.
 
 ## Why this exists
 
@@ -75,6 +96,17 @@ ReverseMCP is intended for agent-driven investigations where a graphical disasse
 - Explicit PAK and Unreal IoStore classification without pretending to decrypt or enumerate protected container indexes.
 - Engine-specific Skills route the artifact inventory into reflection, runtime, and static-binary workflows.
 
+### Engine coverage
+
+| Engine | Native support | Current boundary |
+| --- | --- | --- |
+| Unity | Mono/IL2CPP detection, module and asset inventory, IL2CPP v38/v39 metadata dump, method RVA mapping | Native mapping currently targets matching Windows x86-64 `GameAssembly.dll` files |
+| Unreal Engine | UE4/UE5 layout detection, module/PDB inventory, cooked assets, PAK and IoStore classification | Encrypted indexes and runtime UObject reflection require authorized keys or live analysis |
+| Godot | Godot 3/4 detection, scripts, extensions, standalone and embedded PCK header parsing | Encrypted PCK directories are identified but not decrypted |
+| Source / Source 2 | Generation-specific module evidence, VPK validation, compiled-resource inventory | Entity tables and SchemaSystem layouts are recovered from the target build rather than assumed |
+| CRYENGINE | CrySystem/GameSDK detection, module, configuration, shader, level, and CryPak inventory | Signed or encrypted PAK content is not bypassed |
+| Cocos2d-x | Native module, script, shader, asset, and binding-oriented inventory | Statically linked builds require corroborating strings, symbols, or runtime evidence |
+
 ### Knowledge skills
 
 The native server performs deterministic work. Skills describe how an agent should combine those primitives and how to validate version-sensitive assumptions.
@@ -127,6 +159,7 @@ ctest --preset release
 ```
 
 The test preset covers MCP framing and schemas, PE parsing, cache round-trips, CFG recovery, memory access, Zydis decoding, stack walking, a real child-process debugger integration test, all twelve skills, and the stress suite.
+
 The engine suite also validates Unity IL2CPP, Source 2, and Godot PCK detection using isolated fixtures.
 
 ## Connect an MCP client
@@ -147,6 +180,8 @@ The repository is already a Codex plugin. Its `.mcp.json` starts the release exe
 ```
 
 Transport is newline-delimited JSON-RPC 2.0 over standard input and output. Diagnostics go to standard error so they cannot corrupt protocol frames. The server implements MCP initialization, ping, tool discovery, and tool calls. Tool work runs on a fixed worker pool rather than the input thread.
+
+After connecting, call `get_server_info` to confirm the server version and compiled modules. Use MCP `tools/list` as the canonical contract; the prose reference intentionally omits low-level schema repetition.
 
 ## Typical workflows
 
@@ -203,6 +238,13 @@ Read-only `session_id` values and debugger `debug_session_id` values have differ
 ## Tool reference
 
 ReverseMCP exposes 48 tools. [TOOLS.md](docs/TOOLS.md) groups them by lifecycle and documents their limits, mutability, and expected use. Every tool also publishes its exact input and output JSON Schemas through MCP `tools/list`; those runtime schemas are the canonical machine-readable contract.
+
+The four main state scopes are intentionally separate:
+
+- `binary_id` for immutable PE analysis;
+- `workspace_id` for engine or IL2CPP indexes, within the tool family that created it;
+- `session_id` for read-only process access;
+- `debug_session_id` for debugger-owned execution state.
 
 ## Architecture
 
