@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <ranges>
 #include <system_error>
+#include <unordered_set>
 #include <vector>
 
 #include <nlohmann/json.hpp>
@@ -14,6 +15,11 @@
 #include "reverseplugin/analysis/binary_image.hpp"
 #include "reverseplugin/analysis/binary_store.hpp"
 #include "reverseplugin/analysis/function_analyzer.hpp"
+#include "reverseplugin/analysis/control_regions.hpp"
+#include "reverseplugin/analysis/decompiler.hpp"
+#include "reverseplugin/analysis/register_model.hpp"
+#include "reverseplugin/analysis/ssa_builder.hpp"
+#include "reverseplugin/analysis/stack_analysis.hpp"
 #include "reverseplugin/analysis/static_index.hpp"
 #include "reverseplugin/mcp/server.hpp"
 #include "reverseplugin/memory/pattern.hpp"
@@ -50,6 +56,8 @@ void registry_exposes_server_info() {
   expect(registry.find("open_binary") != nullptr, "binary loader tool was not registered");
   expect(registry.find("get_binary_index") != nullptr, "binary index tool was not registered");
   expect(registry.find("analyze_binary_function") != nullptr, "function analysis tool was not registered");
+  expect(registry.find("decompile_binary_function") != nullptr,
+         "function decompiler tool was not registered");
   expect(registry.find("close_binary") != nullptr, "binary close tool was not registered");
   expect(registry.find("read_binary_bytes") != nullptr, "static byte reader was not registered");
   expect(registry.find("disassemble_binary") != nullptr, "static disassembler was not registered");
@@ -67,7 +75,7 @@ void registry_exposes_server_info() {
   expect(registry.find("list_engine_artifacts") != nullptr, "engine artifact index was not registered");
   expect(registry.find("inspect_engine_artifact") != nullptr, "engine artifact inspector was not registered");
   expect(registry.find("close_engine_workspace") != nullptr, "engine workspace close tool was not registered");
-  expect(registry.describe().size() == 48, "unexpected public tool count");
+  expect(registry.describe().size() == 49, "unexpected public tool count");
 }
 
 void server_handles_core_protocol() {
@@ -267,6 +275,9 @@ void static_binary_analysis_works() {
   expect(image.has_value(), "could not parse current PE image");
   expect((*image)->info().format == "PE", "binary format was not identified");
   expect(!(*image)->sections().empty(), "PE sections were not indexed");
+  if ((*image)->info().architecture == "x86_64")
+    expect(!(*image)->runtime_functions().empty(),
+           "x64 runtime-function table was not indexed");
   expect((*image)->contains_rva((*image)->info().entry_rva),
          "PE entry point is outside the image");
   auto entry_bytes = (*image)->bytes_at((*image)->info().entry_rva, 32);
@@ -277,6 +288,11 @@ void static_binary_analysis_works() {
       **image, disassembler, (*image)->info().entry_rva, 16384, 256);
   expect(function && !function->blocks.empty(), "entry-point CFG recovery failed");
   expect(function->instruction_count > 0, "entry-point analysis decoded no instructions");
+  std::unordered_set<std::uint64_t> instruction_addresses;
+  for (const auto& block : function->blocks)
+    for (const auto& instruction : block.instructions)
+      expect(instruction_addresses.insert(instruction.address).second,
+             "CFG contains overlapping basic blocks");
 
   reverseplugin::analysis::BinaryStore binaries;
   auto first = binaries.open(path);
@@ -305,6 +321,199 @@ void static_binary_analysis_works() {
   std::filesystem::remove_all(cache_path, ec);
 }
 
+void decompiler_ir_works() {
+  using reverseplugin::analysis::ControlFlowEdge;
+  using reverseplugin::analysis::DecompilerBlock;
+  using reverseplugin::analysis::DecompilerStatement;
+  using reverseplugin::analysis::RegisterWrite;
+
+  const auto eax = reverseplugin::analysis::resolve_register("eax", true);
+  const auto ah = reverseplugin::analysis::resolve_register("ah", true);
+  const auto r9d = reverseplugin::analysis::resolve_register("r9d", true);
+  const auto xmm3 = reverseplugin::analysis::resolve_register("xmm3", true);
+  expect(eax && eax->canonical == "rax" &&
+             eax->write == RegisterWrite::zero_extend,
+         "x64 eax zero-extension model is wrong");
+  expect(ah && ah->canonical == "rax" && ah->offset_bits == 8 &&
+             ah->write == RegisterWrite::partial,
+         "high-byte register model is wrong");
+  expect(r9d && r9d->canonical == "r9" &&
+             r9d->write == RegisterWrite::zero_extend,
+         "extended register model is wrong");
+  expect(xmm3 && xmm3->canonical == "zmm3" && xmm3->size_bits == 128,
+         "vector register alias model is wrong");
+
+  const auto register_operand = [](std::string name) {
+    return reverseplugin::disasm::Operand{
+        .type = "register", .visibility = "explicit", .size_bits = 64,
+        .register_name = std::move(name)};
+  };
+  const auto immediate_operand = [](std::int64_t value) {
+    return reverseplugin::disasm::Operand{
+        .type = "immediate", .visibility = "explicit", .size_bits = 8,
+        .immediate = value};
+  };
+  const auto stack_operand = [](std::int64_t displacement) {
+    return reverseplugin::disasm::Operand{
+        .type = "memory", .visibility = "explicit", .actions = {"read"},
+        .size_bits = 64,
+        .memory = reverseplugin::disasm::MemoryOperand{
+            .base = "rsp", .scale = 1, .displacement = displacement}};
+  };
+  reverseplugin::analysis::FunctionAnalysis stack_function{
+      .blocks = {{.rva = 0x80,
+                  .instructions = {
+                      {.address = 0x140000080, .size = 4, .mnemonic = "sub",
+                       .operands = {register_operand("rsp"), immediate_operand(0x20)}},
+                      {.address = 0x140000084, .size = 4, .mnemonic = "mov",
+                       .operands = {register_operand("rax"), stack_operand(0x10)}},
+                      {.address = 0x140000088, .size = 4, .mnemonic = "add",
+                       .operands = {register_operand("rsp"), immediate_operand(0x10)}},
+                      {.address = 0x14000008c, .size = 4, .mnemonic = "mov",
+                       .operands = {register_operand("rax"), stack_operand(0)}}}}}};
+  const auto stack = reverseplugin::analysis::analyze_stack(stack_function, true);
+  expect(stack.variables.size() == 1 && stack.aliases.size() == 2 &&
+             stack.aliases[0].raw_alias != stack.aliases[1].raw_alias &&
+             stack.aliases[0].normalized_alias == stack.aliases[1].normalized_alias,
+         "stack analysis did not normalize aliases across stack-pointer changes");
+
+  constexpr std::uint64_t base = 0x140000000;
+  std::vector<DecompilerBlock> blocks{
+      {.rva = 0x100,
+       .statements = {{.address = base + 0x100,
+                       .operation = "assign",
+                       .definitions = {"eax"}}}},
+      {.rva = 0x110,
+       .statements = {{.address = base + 0x110,
+                       .operation = "assign",
+                       .definitions = {"rax"}}}},
+      {.rva = 0x120,
+       .statements = {{.address = base + 0x120,
+                       .operation = "assign",
+                       .definitions = {"ax"}}}},
+      {.rva = 0x130,
+       .statements = {{.address = base + 0x130,
+                       .operation = "return",
+                       .uses = {"rax"}}}}};
+  const std::vector<ControlFlowEdge> edges{{0x100, 0x110, "taken"},
+                                           {0x100, 0x120, "fallthrough"},
+                                           {0x110, 0x130, "jump"},
+                                           {0x120, 0x130, "jump"}};
+  const auto ssa = reverseplugin::analysis::build_ssa(blocks, edges, base, true);
+  expect(ssa.converged && ssa.phi_count == 1,
+         "diamond CFG did not produce one converged phi node");
+  expect(blocks[0].statements[0].ssa_definitions[0].write == "zero_extend",
+         "eax SSA definition lost zero-extension semantics");
+  expect(blocks[2].statements[0].ssa_definitions[0].write == "partial" &&
+             !blocks[2].statements[0].ssa_uses.empty(),
+         "partial ax write did not preserve its prior rax dependency");
+  expect(blocks[3].phi_nodes[0].storage == "rax" &&
+             blocks[3].statements[0].ssa_uses[0].value ==
+                 blocks[3].phi_nodes[0].output,
+         "merged rax use is not connected to the phi output");
+
+  const auto regions = reverseplugin::analysis::recover_control_regions(
+      blocks, edges, base, 0x100);
+  const auto conditional = std::ranges::find_if(regions, [](const auto& region) {
+    return region.kind == "conditional";
+  });
+  expect(conditional != regions.end() && conditional->merge_rva == 0x130,
+         "conditional merge recovery failed");
+
+  std::vector<DecompilerBlock> loop_blocks{
+      {.rva = 0x200,
+       .statements = {{.address = base + 0x200,
+                       .operation = "assign",
+                       .definitions = {"ecx"}}}},
+      {.rva = 0x210,
+       .statements = {{.address = base + 0x210,
+                       .operation = "assign",
+                       .definitions = {"ecx"},
+                       .uses = {"ecx"}}}},
+      {.rva = 0x220,
+       .statements = {{.address = base + 0x220,
+                       .operation = "return",
+                       .uses = {"ecx"}}}}};
+  const std::vector<ControlFlowEdge> loop_edges{{0x200, 0x210, "fallthrough"},
+                                                {0x210, 0x210, "taken"},
+                                                {0x210, 0x220, "fallthrough"}};
+  const auto loop_ssa = reverseplugin::analysis::build_ssa(
+      loop_blocks, loop_edges, base, true);
+  expect(loop_ssa.converged && loop_blocks[1].phi_nodes.size() == 1,
+         "loop-carried ecx value did not produce a phi node");
+  const auto loop_regions = reverseplugin::analysis::recover_control_regions(
+      loop_blocks, loop_edges, base, 0x200);
+  expect(std::ranges::find_if(loop_regions, [](const auto& region) {
+           return region.kind == "natural_loop" && region.header_rva == 0x210;
+         }) != loop_regions.end(),
+         "natural loop recovery failed");
+
+  std::vector<DecompilerBlock> memory_blocks{
+      {.rva = 0x300},
+      {.rva = 0x310,
+       .statements = {{.address = base + 0x310,
+                       .operation = "store",
+                       .memory_accesses = {{.action = "write",
+                                            .address = "[rsp+0x20]",
+                                            .alias_set = "stack:rsp+32",
+                                            .size_bits = 64}}}}},
+      {.rva = 0x320,
+       .statements = {{.address = base + 0x320,
+                       .operation = "store",
+                       .memory_accesses = {{.action = "write",
+                                            .address = "[rsp+0x20]",
+                                            .alias_set = "stack:rsp+32",
+                                            .size_bits = 64}}}}},
+      {.rva = 0x330,
+       .statements = {{.address = base + 0x330,
+                       .operation = "load",
+                       .memory_accesses = {{.action = "read",
+                                            .address = "[rsp+0x20]",
+                                            .alias_set = "stack:rsp+32",
+                                            .size_bits = 64}}}}}};
+  const std::vector<ControlFlowEdge> memory_edges{
+      {0x300, 0x310, "taken"}, {0x300, 0x320, "fallthrough"},
+      {0x310, 0x330, "jump"}, {0x320, 0x330, "jump"}};
+  const auto memory_ssa = reverseplugin::analysis::build_ssa(
+      memory_blocks, memory_edges, base, true);
+  expect(memory_ssa.converged && memory_ssa.phi_count == 1 &&
+             memory_blocks[3].phi_nodes[0].storage == "stack:rsp+32",
+         "memory SSA did not merge stack-slot definitions");
+  expect(!memory_blocks[1].statements[0].memory_accesses[0].ssa_output.empty() &&
+             memory_blocks[3].statements[0].memory_accesses[0].ssa_input ==
+                 memory_blocks[3].phi_nodes[0].output,
+         "memory SSA access versions are not connected through the phi node");
+
+  std::vector<DecompilerBlock> vector_blocks{
+      {.rva = 0x400,
+       .statements = {{.address = base + 0x400,
+                       .operation = "assign",
+                       .source = "vpxor xmm1, xmm1, xmm1",
+                       .definitions = {"xmm1"}}}}};
+  const auto vector_ssa =
+      reverseplugin::analysis::build_ssa(vector_blocks, {}, base, true);
+  expect(vector_ssa.converged, "vector SSA did not converge");
+  expect(vector_blocks[0].statements[0].ssa_definitions[0].write == "full" &&
+             vector_blocks[0].statements[0].ssa_uses.empty(),
+         "VEX vector destination incorrectly retained an upper-lane dependency");
+
+  std::vector<DecompilerBlock> x86_call_blocks{
+      {.rva = 0x500,
+       .statements = {{.address = base + 0x500,
+                       .operation = "call",
+                       .source = "call eax"}}}};
+  const auto x86_call_ssa =
+      reverseplugin::analysis::build_ssa(x86_call_blocks, {}, base, false);
+  expect(x86_call_ssa.converged, "x86 call SSA did not converge");
+  expect(std::ranges::find_if(
+             x86_call_blocks[0].statements[0].ssa_definitions,
+             [](const auto& definition) {
+               return definition.storage == "eax" &&
+                      definition.role == "call_clobber";
+             }) != x86_call_blocks[0].statements[0].ssa_definitions.end(),
+         "x86 call did not clobber its caller-saved result register");
+}
+
 void static_analysis_tools_work_end_to_end() {
   reverseplugin::mcp::ToolRegistry registry;
   reverseplugin::register_builtin_tools(
@@ -329,6 +538,17 @@ void static_analysis_tools_work_end_to_end() {
       {"max_bytes", 16384}, {"max_blocks", 256}, {"use_cache", true}});
   expect(cached_analysis && cached_analysis->at("cache_hit") == true,
          "function analysis was not reused from persistent cache");
+
+  auto decompiled = registry.find("decompile_binary_function")->invoke({
+      {"binary_id", id}, {"address", opened->at("entry_rva")},
+      {"max_bytes", 16384}, {"max_blocks", 256}, {"use_cache", false}});
+  expect(decompiled && decompiled->at("instruction_count").get<std::size_t>() > 0,
+         "decompile_binary_function lifted no instructions");
+  expect(!decompiled->at("blocks").empty() && !decompiled->at("pseudocode").empty(),
+         "decompile_binary_function returned no semantic representation");
+  expect(decompiled->at("lifted_instruction_count").get<std::size_t>() <=
+             decompiled->at("instruction_count").get<std::size_t>(),
+         "decompiler coverage counters are inconsistent");
 
   auto bytes = registry.find("read_binary_bytes")->invoke({
       {"binary_id", id}, {"address", opened->at("entry_rva")}, {"length", 16}});
@@ -377,6 +597,14 @@ void static_analysis_tools_work_end_to_end() {
       {"binary_id", id}, {"limit", 32}});
   expect(annotations && annotations->at("total").get<std::size_t>() > 0,
          "get_binary_annotations failed");
+  auto annotated_decompilation = registry.find("decompile_binary_function")->invoke({
+      {"binary_id", id}, {"address", opened->at("entry_rva")},
+      {"max_bytes", 16384}, {"max_blocks", 256}, {"use_cache", true}});
+  expect(annotated_decompilation &&
+             annotated_decompilation->at("function_name") == "test_entry" &&
+             annotated_decompilation->at("prototype") == "void entry()" &&
+             !annotated_decompilation->at("annotations").empty(),
+         "decompiler did not overlay persisted analyst annotations");
   auto removed_annotation = registry.find("set_binary_annotation")->invoke({
       {"binary_id", id}, {"address", opened->at("entry_rva")}, {"remove", true}});
   expect(removed_annotation && removed_annotation->at("removed") == true,
@@ -393,6 +621,7 @@ int main() {
   process_memory_round_trip();
   zydis_decodes_structured_instructions();
   static_binary_analysis_works();
+  decompiler_ir_works();
   static_analysis_tools_work_end_to_end();
   pattern_parser_and_matcher_work();
   snapshot_store_refines_candidates();

@@ -7,6 +7,8 @@
 #include <memory>
 #include <span>
 #include <string>
+#include <string_view>
+#include <unordered_map>
 #include <vector>
 
 namespace reverseplugin::analysis {
@@ -37,6 +39,12 @@ struct Export final {
   std::string forwarder;
 };
 
+struct RuntimeFunction final {
+  std::uint32_t begin_rva;
+  std::uint32_t end_rva;
+  std::uint32_t unwind_rva;
+};
+
 struct BinaryInfo final {
   std::filesystem::path path;
   std::string fingerprint;
@@ -57,6 +65,12 @@ class BinaryImage final {
   [[nodiscard]] const std::vector<Section>& sections() const noexcept { return sections_; }
   [[nodiscard]] const std::vector<Import>& imports() const noexcept { return imports_; }
   [[nodiscard]] const std::vector<Export>& exports() const noexcept { return exports_; }
+  [[nodiscard]] const std::vector<RuntimeFunction>& runtime_functions() const noexcept {
+    return runtime_functions_;
+  }
+  [[nodiscard]] const RuntimeFunction* runtime_function_at(
+      std::uint32_t rva) const noexcept;
+  [[nodiscard]] std::string_view symbol_at(std::uint32_t rva) const noexcept;
   [[nodiscard]] std::expected<std::span<const std::byte>, std::string> bytes_at(
       std::uint32_t rva, std::size_t maximum) const;
   [[nodiscard]] bool contains_rva(std::uint64_t rva) const noexcept;
@@ -71,6 +85,8 @@ class BinaryImage final {
   std::vector<Section> sections_;
   std::vector<Import> imports_;
   std::vector<Export> exports_;
+  std::vector<RuntimeFunction> runtime_functions_;
+  std::unordered_map<std::uint32_t, std::string> symbols_;
 };
 
 }  // namespace reverseplugin::analysis

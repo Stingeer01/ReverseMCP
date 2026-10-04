@@ -11,16 +11,16 @@ ReverseMCP is a native C++23 Model Context Protocol server for reverse-engineeri
 
 The repository contains both parts of the system:
 
-- a native execution layer with 48 bounded MCP tools;
+- a native execution layer with 49 bounded MCP tools;
 - a knowledge layer with focused skills for native binaries, debuggers, protected code, managed runtimes, and popular game engines.
 
 The executable and internal C++ namespace retain the name `reverseplugin` for compatibility. ReverseMCP is the project and distribution name.
 
 ## At a glance
 
-- 48 MCP tools with explicit input and output JSON Schemas.
+- 49 MCP tools with explicit input and output JSON Schemas.
 - 12 focused analysis Skills.
-- Static PE analysis and Zydis-backed x86/x64 disassembly.
+- Static PE analysis, Zydis-backed x86/x64 disassembly, and SSA-backed C-like pseudocode.
 - Unity IL2CPP metadata v38/v39 with token-to-native-RVA mapping.
 - Installation discovery for seven engine families.
 - Validated process-memory access and a native Windows debugger.
@@ -40,7 +40,7 @@ Extract the archive and point the MCP client at `build/release/Release/reversepl
 
 General-purpose shell tools force an agent to parse unstable text output and repeatedly reconstruct analysis state. ReverseMCP exposes addresses, instructions, operands, references, registers, memory regions, and debugger events as typed JSON. Static results are keyed by the binary SHA-256, so an unchanged file can reuse previous function discovery, xrefs, strings, CFGs, names, comments, and types.
 
-ReverseMCP is intended for agent-driven investigations where a graphical disassembler is unavailable or unnecessary. It covers a substantial part of an IDA MCP workflow, but it does not claim feature parity with IDA Pro. Version 1.2 has no native decompiler, GUI database import, ELF/Mach-O loader, ARM decoder, or plugin bridge to an existing IDB.
+ReverseMCP is intended for agent-driven investigations where a graphical disassembler is unavailable or unnecessary. It replaces the common IDA MCP loop for PE triage, navigation, call-graph traversal, structured disassembly, function-level data flow, annotation, live memory, and native debugging. It does not claim feature parity with IDA Pro or Hex-Rays. The native decompiler does not recover original source or guarantee source-level types, structured exception constructs, switch reconstruction, or complete vector and floating-point semantics. GUI database import, ELF/Mach-O loading, ARM decoding, and an IDB bridge remain outside the current contract.
 
 ## Capabilities
 
@@ -55,7 +55,10 @@ ReverseMCP is intended for agent-driven investigations where a graphical disasse
 - Direct call, jump, immediate, and RIP-relative data references.
 - Function discovery from the entry point, exports, x64 unwind records, and recursively reached direct calls.
 - Bounded control-flow graphs, typed edges, basic blocks, and call graph data.
-- Persistent names, comments, and type declarations isolated by content hash.
+- x86/x64 semantic lifting with canonical register slices, pruned inter-block SSA, memory SSA alias sets, phi nodes, natural-loop and conditional-region recovery, normalized stack variables, ABI parameter candidates, type and field evidence, and per-statement confidence.
+- PE exception-directory boundaries prevent x64 tail calls and neighboring functions from being merged into one CFG; import and export symbols are propagated into call targets.
+- Unsupported semantics remain visible as address-linked intrinsics instead of being silently guessed.
+- Persistent names, comments, and type declarations isolated by content hash and overlaid on cached decompilation results without invalidating deterministic analysis.
 
 ### Runtime memory
 
@@ -158,7 +161,7 @@ Run the complete test suite independently with:
 ctest --preset release
 ```
 
-The test preset covers MCP framing and schemas, PE parsing, cache round-trips, CFG recovery, memory access, Zydis decoding, stack walking, a real child-process debugger integration test, all twelve skills, and the stress suite.
+The test preset covers MCP framing and schemas, PE parsing, cache round-trips, CFG recovery, semantic lifting, memory access, Zydis decoding, stack walking, a real child-process debugger integration test, all twelve skills, and the stress suite.
 
 The engine suite also validates Unity IL2CPP, Source 2, and Godot PCK detection using isolated fixtures.
 
@@ -191,8 +194,9 @@ After connecting, call `get_server_info` to confirm the server version and compi
 2. Read sections, imports, and exports with `get_binary_index`.
 3. Run `discover_binary_functions` and `find_binary_strings`.
 4. Follow targets with `find_binary_xrefs` and `analyze_binary_function`.
-5. Save conclusions through `set_binary_annotation`.
-6. Call `close_binary` when the in-memory workspace is no longer needed.
+5. Call `decompile_binary_function`; use SSA values, phi nodes, memory alias sets, control regions, and type/field evidence before reading the rendered pseudocode. Inspect every `partial` or `unmodeled` statement against its source instruction.
+6. Save conclusions through `set_binary_annotation`.
+7. Call `close_binary` when the in-memory workspace is no longer needed.
 
 All stable identities are RVAs. Virtual addresses are also returned for display. Addresses are serialized as hexadecimal strings to avoid JSON and model precision loss.
 
@@ -237,7 +241,7 @@ Read-only `session_id` values and debugger `debug_session_id` values have differ
 
 ## Tool reference
 
-ReverseMCP exposes 48 tools. [TOOLS.md](docs/TOOLS.md) groups them by lifecycle and documents their limits, mutability, and expected use. Every tool also publishes its exact input and output JSON Schemas through MCP `tools/list`; those runtime schemas are the canonical machine-readable contract.
+ReverseMCP exposes 49 tools. [TOOLS.md](docs/TOOLS.md) groups them by lifecycle and documents their limits, mutability, and expected use. Every tool also publishes its exact input and output JSON Schemas through MCP `tools/list`; those runtime schemas are the canonical machine-readable contract.
 
 The four main state scopes are intentionally separate:
 
@@ -259,6 +263,7 @@ flowchart LR
     Tools --> IL2CPP[IL2CPP metadata and code registration]
     Tools --> Engines[Engine artifact workspaces]
     Static --> Zydis[Zydis decoder]
+    Zydis --> Lifter[Semantic lifter and pseudocode]
     Memory --> Zydis
     Static --> Cache[SHA-256 persistent cache]
     Skills[Focused analysis skills] -. guide .-> Client
@@ -268,7 +273,7 @@ The boundaries are deliberate:
 
 - `src/mcp` owns framing, JSON-RPC dispatch, schema discovery, and result envelopes.
 - `src/tools` translates MCP requests into typed domain operations.
-- `src/analysis` owns immutable images, discovery, CFG recovery, annotations, and persistent cache records.
+- `src/analysis` owns immutable images, discovery, CFG recovery, semantic lifting, annotations, and persistent cache records.
 - `src/process` and `src/memory` own Win32 handles, page validation, scans, and snapshots.
 - `src/debug` owns the debugger thread, breakpoints, register state, and stack walking.
 - `src/disasm` is the Zydis adapter.
@@ -308,6 +313,7 @@ Use ReverseMCP only on software and systems you own or are authorized to inspect
 - 512 MiB of typed snapshot comparisons;
 - 200,000 concurrent `ReadProcessMemory` operations;
 - 1.2 million decoded instructions across eight threads;
+- 256 concurrent function decompilations across eight threads;
 - concurrent static-image cache reuse;
 - 20,000 MCP requests across eight workers.
 

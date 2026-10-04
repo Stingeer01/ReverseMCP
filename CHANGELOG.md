@@ -4,7 +4,12 @@ This project follows Semantic Versioning. Dates use ISO 8601.
 
 ## [Unreleased]
 
-No unreleased user-facing changes.
+### Added
+
+- `decompile_binary_function`, a bounded x86/x64 semantic decompiler with address-linked C-like pseudocode, canonical register slices, pruned inter-block register and memory SSA, phi nodes, normalized stack variables, ABI parameter candidates, natural-loop and conditional-region recovery, type/field evidence, confidence levels, and explicit unsupported-instruction intrinsics.
+- PE32+ runtime-function boundary parsing, tail-call references, and import/export symbol propagation for static function analysis.
+- Live function names, target names, comments, and prototypes from persistent annotations, including on decompiler cache hits.
+- Concurrent decompiler stress coverage plus focused register-alias, loop SSA, memory SSA, control-region, annotation-overlay, and end-to-end MCP tests.
 
 ## [1.2.0] - 2026-09-30
 

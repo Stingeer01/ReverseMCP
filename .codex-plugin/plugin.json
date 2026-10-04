@@ -13,12 +13,13 @@
   "interface": {
     "displayName": "ReverseMCP",
     "shortDescription": "Native binary, engine, memory, and debugging tools over MCP.",
-    "longDescription": "A native C++23 MCP server for static PE and game-engine analysis, structured Zydis disassembly, function and cross-reference discovery, persistent annotations, validated process-memory access, stack walking, and Win32 debugging. Engine workspaces identify and index Unity, Unreal Engine, Godot, Source, Source 2, CRYENGINE, and Cocos2d-x installations without launching them; Unity IL2CPP v38/v39 adds direct method-to-native mapping.",
+    "longDescription": "A native C++23 MCP server for static PE and game-engine analysis, structured Zydis disassembly, SSA-backed C-like pseudocode, function and cross-reference discovery, persistent annotations, validated process-memory access, stack walking, and Win32 debugging. The decompiler exposes register and memory SSA, phi nodes, control regions, stack variables, and type/field evidence. Engine workspaces identify and index Unity, Unreal Engine, Godot, Source, Source 2, CRYENGINE, and Cocos2d-x installations without launching them; Unity IL2CPP v38/v39 adds direct method-to-native mapping.",
     "developerName": "Stingeer01",
     "category": "Developer Tools",
     "capabilities": ["Read", "Write"],
     "defaultPrompt": [
       "Open a PE binary and build a structured analysis plan.",
+      "Decompile an x86 or x64 function into address-linked C-like pseudocode.",
       "Dump Unity IL2CPP metadata and map methods to GameAssembly addresses.",
       "Identify a game engine and inventory its native modules and content containers.",
       "Inspect a Windows process without modifying it."

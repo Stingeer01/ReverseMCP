@@ -68,6 +68,7 @@ class ServerInfoTool final : public mcp::Tool {
                                                    "memory_snapshots", "zydis", "debugger",
                                                    "stack_walking", "symbols", "pe_loader",
                                                    "static_cfg", "function_index", "xrefs",
+                                                   "semantic_lifter", "c_like_pseudocode",
                                                    "string_index", "annotations", "persistent_cache",
                                                    "il2cpp_v38_v39", "il2cpp_native_mapping",
                                                    "engine_detection", "engine_artifact_index"})}};

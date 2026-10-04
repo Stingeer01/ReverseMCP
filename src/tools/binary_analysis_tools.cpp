@@ -360,6 +360,11 @@ void register_binary_index_tools(
     const std::shared_ptr<analysis::BinaryStore>& binaries,
     const std::shared_ptr<analysis::AnalysisCache>& cache,
     const std::shared_ptr<disasm::Disassembler>& disassembler);
+void register_binary_decompiler_tools(
+    mcp::ToolRegistry& registry,
+    const std::shared_ptr<analysis::BinaryStore>& binaries,
+    const std::shared_ptr<analysis::AnalysisCache>& cache,
+    const std::shared_ptr<disasm::Disassembler>& disassembler);
 
 void register_binary_analysis_tools(
     mcp::ToolRegistry& registry,
@@ -373,6 +378,7 @@ void register_binary_analysis_tools(
     std::terminate();
   register_binary_navigation_tools(registry, binaries, disassembler);
   register_binary_index_tools(registry, binaries, cache, disassembler);
+  register_binary_decompiler_tools(registry, binaries, cache, disassembler);
 }
 
 }  // namespace reverseplugin

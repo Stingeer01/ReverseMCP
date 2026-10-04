@@ -127,6 +127,7 @@ std::expected<std::shared_ptr<BinaryImage>, std::string> BinaryImage::open(
 
   IMAGE_DATA_DIRECTORY import_directory{};
   IMAGE_DATA_DIRECTORY export_directory{};
+  IMAGE_DATA_DIRECTORY exception_directory{};
   std::uint32_t section_alignment = 0;
   if (*magic == IMAGE_NT_OPTIONAL_HDR64_MAGIC) {
     const auto optional = read_object<IMAGE_OPTIONAL_HEADER64>(bytes, optional_offset);
@@ -140,6 +141,8 @@ std::expected<std::shared_ptr<BinaryImage>, std::string> BinaryImage::open(
       import_directory = optional->DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT];
     if (optional->NumberOfRvaAndSizes > IMAGE_DIRECTORY_ENTRY_EXPORT)
       export_directory = optional->DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT];
+    if (optional->NumberOfRvaAndSizes > IMAGE_DIRECTORY_ENTRY_EXCEPTION)
+      exception_directory = optional->DataDirectory[IMAGE_DIRECTORY_ENTRY_EXCEPTION];
   } else if (*magic == IMAGE_NT_OPTIONAL_HDR32_MAGIC) {
     const auto optional = read_object<IMAGE_OPTIONAL_HEADER32>(bytes, optional_offset);
     if (!optional) return std::unexpected("PE32 optional header is truncated");
@@ -221,6 +224,10 @@ std::expected<std::shared_ptr<BinaryImage>, std::string> BinaryImage::open(
             const auto name = string_at_rva(static_cast<std::uint32_t>(thunk) + 2);
             if (name) imported.name = *name;
           }
+          std::string symbol = imported.module + "!";
+          symbol += imported.by_ordinal ? "ordinal_" + std::to_string(imported.ordinal)
+                                        : imported.name;
+          image->symbols_.try_emplace(imported.iat_rva, std::move(symbol));
           image->imports_.push_back(std::move(imported));
         }
       }
@@ -259,9 +266,36 @@ std::expected<std::shared_ptr<BinaryImage>, std::string> BinaryImage::open(
           if (*rva >= export_directory.VirtualAddress && *rva < directory_end) {
             if (auto target = string_at_rva(*rva)) exported.forwarder = std::move(*target);
           }
+          if (!exported.name.empty())
+            image->symbols_.try_emplace(exported.rva, exported.name);
           image->exports_.push_back(std::move(exported));
         }
       }
+    }
+  }
+
+  if (image->info_.architecture == "x86_64" &&
+      exception_directory.VirtualAddress != 0 &&
+      exception_directory.Size >= sizeof(RUNTIME_FUNCTION)) {
+    const auto table = raw_offset(exception_directory.VirtualAddress,
+                                  image->sections_, bytes.size());
+    const auto count = exception_directory.Size / sizeof(RUNTIME_FUNCTION);
+    if (table && count <= 1'000'000) {
+      image->runtime_functions_.reserve(count);
+      for (std::size_t i = 0; i < count; ++i) {
+        const auto entry = read_object<RUNTIME_FUNCTION>(
+            bytes, *table + i * sizeof(RUNTIME_FUNCTION));
+        if (!entry || entry->BeginAddress >= entry->EndAddress ||
+            entry->EndAddress > image->info_.image_size ||
+            !image->executable_rva(entry->BeginAddress))
+          continue;
+        image->runtime_functions_.push_back(
+            {.begin_rva = entry->BeginAddress,
+             .end_rva = entry->EndAddress,
+             .unwind_rva = entry->UnwindData});
+      }
+      std::ranges::sort(image->runtime_functions_, {},
+                        &RuntimeFunction::begin_rva);
     }
   }
 
@@ -305,6 +339,22 @@ const Section* BinaryImage::section_at(std::uint64_t rva) const noexcept {
 bool BinaryImage::executable_rva(std::uint64_t rva) const noexcept {
   const auto* section = section_at(rva);
   return section != nullptr && section->executable;
+}
+
+const RuntimeFunction* BinaryImage::runtime_function_at(
+    std::uint32_t rva) const noexcept {
+  const auto found = std::ranges::upper_bound(
+      runtime_functions_, rva, {}, &RuntimeFunction::begin_rva);
+  if (found == runtime_functions_.begin()) return nullptr;
+  const auto& candidate = *std::prev(found);
+  return rva >= candidate.begin_rva && rva < candidate.end_rva
+             ? &candidate
+             : nullptr;
+}
+
+std::string_view BinaryImage::symbol_at(std::uint32_t rva) const noexcept {
+  const auto found = symbols_.find(rva);
+  return found == symbols_.end() ? std::string_view{} : found->second;
 }
 
 std::expected<std::uint32_t, std::string> BinaryImage::normalize_address(

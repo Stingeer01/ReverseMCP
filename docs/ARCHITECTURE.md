@@ -24,7 +24,11 @@ A tool returns `std::expected<Json, ToolError>`. Invalid external input is data,
 
 `BinaryImage` validates and owns immutable file bytes plus normalized PE metadata. `BinaryStore` reuses images by canonical path, size, and modification time. Analysis algorithms consume immutable spans and return bounded value objects.
 
-The static index and function analyzer are independent of MCP. They operate on RVAs and only derive virtual addresses from the preferred image base for presentation.
+The static index, function analyzer, and decompiler pipeline are independent of MCP. They operate on RVAs and only derive virtual addresses from the preferred image base for presentation. On PE32+, exception-directory runtime functions provide authoritative native boundaries where available; an out-of-range jump is represented as a tail call rather than decoded into a neighboring function.
+
+The decompiler resolves architectural register aliases before data-flow analysis. Partial writes retain the previous canonical value, x86-64 32-bit writes explicitly zero-extend, and vector aliases share a canonical storage family. A bounded fixed-point pass builds pruned SSA across basic blocks, including loop-carried register values and conservative memory alias sets. Separate passes normalize stack locations against the entry stack pointer, recover natural loops and conditional merge regions, and emit type and field evidence. Each C-like statement retains its source address and instruction, structured definitions and uses, SSA versions, memory accesses, and a confidence level. Unsupported semantics remain explicit intrinsics.
+
+Rendered pseudocode is a presentation of this evidence, not the source of truth. Analyst annotations are loaded after deterministic cached results and may rename functions, call targets, or attach prototypes without forcing the expensive analysis graph to be recomputed.
 
 ### IL2CPP
 
@@ -74,7 +78,7 @@ Keeping process and debugger sessions separate prevents a read-only inspection f
 
 ## Persistent cache
 
-The default root is `%LOCALAPPDATA%/ReversePlugin/analysis-cache-v1`. Each binary hash owns a directory containing versioned derived records and annotations. Cache keys include the analysis inputs that change a deterministic result, such as scan limits or a function start RVA.
+The default root is `%LOCALAPPDATA%/ReversePlugin/analysis-cache-v1`. Each binary hash owns a directory containing versioned derived records and annotations. Cache keys include the analysis inputs that change a deterministic result, such as scan limits or a function start RVA. Decompiler cache records store the deterministic semantic graph; mutable annotations are overlaid when a result is returned, so a rename is visible immediately even on a cache hit.
 
 Writes use a temporary sibling followed by replacement, so interrupted writes do not expose partial JSON. Cache parsing is treated as untrusted input. A malformed or incompatible record is ignored or reported; it is never allowed to corrupt the live workspace.
 

@@ -1,6 +1,6 @@
 # Tool reference
 
-ReverseMCP 1.2 exposes 48 MCP tools. Names and schemas are part of the public interface. The exact input and output schemas returned by `tools/list` take precedence over this human-readable guide.
+ReverseMCP exposes 49 MCP tools. Names and schemas are part of the public interface. The exact input and output schemas returned by `tools/list` take precedence over this human-readable guide.
 
 ## Common conventions
 
@@ -65,6 +65,12 @@ Builds a bounded function index from the PE entry point, exports, x64 unwind rec
 ### `analyze_binary_function`
 
 Recovers a bounded control-flow graph from an RVA or virtual address. It returns basic blocks, structured instructions, typed fallthrough/conditional/unconditional edges, and direct call references. Defaults are 1024 blocks and 64 KiB of decoded bytes; hard limits are 4096 blocks and 1 MiB. Deterministic results are cached by binary content hash.
+
+### `decompile_binary_function`
+
+Lifts a bounded x86/x64 function into C-like pseudocode and a structured semantic graph. Every statement retains its virtual address and source instruction, canonical register definitions and uses, SSA inputs and outputs, memory accesses with conservative alias sets, optional branch/call target metadata, and an `exact`, `inferred`, `partial`, or `unmodeled` confidence value. Basic blocks carry pruned phi nodes. The function result includes CFG edges, call and tail-call references, natural-loop and conditional regions, Microsoft x64 parameter candidates, normalized stack-frame variables, type evidence, field/array evidence, coverage counts, and warnings.
+
+The output is deliberately conservative. Unsupported instructions are emitted as `__asm_*` intrinsics rather than assigned invented semantics. Parameter names, types, field layouts, and return types remain evidence-backed hypotheses rather than recovered source declarations. PE32+ runtime-function records constrain function boundaries when present. Import/export names and analyst annotations are applied to targets; mutable annotation overlays stay current even when the deterministic graph comes from cache. Defaults are 1024 blocks and 64 KiB; hard limits are 4096 blocks and 1 MiB.
 
 ### `set_binary_annotation`
 

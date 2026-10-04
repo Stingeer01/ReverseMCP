@@ -18,6 +18,7 @@
 #include "reverseplugin/disasm/disassembler.hpp"
 #include "reverseplugin/analysis/binary_image.hpp"
 #include "reverseplugin/analysis/binary_store.hpp"
+#include "reverseplugin/analysis/decompiler.hpp"
 #include "reverseplugin/analysis/static_index.hpp"
 #include "reverseplugin/memory/pattern.hpp"
 #include "reverseplugin/memory/snapshot_store.hpp"
@@ -177,6 +178,31 @@ void static_analysis_load() {
       **image, disassembler, (*image)->info().entry_rva,
       64U * 1024U * 1024U, 65536);
   require(xrefs.has_value(), "static load xref scan failed");
+  constexpr std::size_t decompiler_workers = 8;
+  constexpr std::size_t decompilations_per_worker = 32;
+  std::atomic_size_t decompiler_failures{0};
+  std::vector<std::jthread> decompiler_threads;
+  const auto decompiler_started = Clock::now();
+  for (std::size_t worker = 0; worker < decompiler_workers; ++worker) {
+    decompiler_threads.emplace_back([&] {
+      for (std::size_t iteration = 0; iteration < decompilations_per_worker;
+           ++iteration) {
+        auto result = reverseplugin::analysis::decompile_function(
+            **image, disassembler, (*image)->info().entry_rva, 16384, 256);
+        if (!result || result->blocks.empty() || result->pseudocode.empty())
+          ++decompiler_failures;
+      }
+    });
+  }
+  decompiler_threads.clear();
+  require(decompiler_failures.load() == 0,
+          "concurrent decompilation failed");
+  const auto decompiler_seconds =
+      std::chrono::duration<double>(Clock::now() - decompiler_started).count();
+  std::cout << "Decompiler: "
+            << (decompiler_workers * decompilations_per_worker) /
+                   decompiler_seconds
+            << " functions/s on " << decompiler_workers << " threads\n";
   reverseplugin::analysis::BinaryStore store;
   auto opened = store.open((*image)->info().path);
   require(opened.has_value(), "static cache initial open failed");

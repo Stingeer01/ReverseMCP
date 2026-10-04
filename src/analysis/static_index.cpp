@@ -1,7 +1,6 @@
 #include "reverseplugin/analysis/static_index.hpp"
 
 #include <algorithm>
-#include <cstring>
 #include <deque>
 #include <unordered_map>
 #include <unordered_set>
@@ -133,17 +132,9 @@ std::expected<FunctionIndex, std::string> discover_functions(
   add_seed(image.info().entry_rva, "entry", image, pending, sources, max_functions);
   for (const auto& exported : image.exports())
     add_seed(exported.rva, "export", image, pending, sources, max_functions);
-  for (const auto& section : image.sections()) {
-    if (section.name != ".pdata" || section.raw_size < 12) continue;
-    auto bytes = image.bytes_at(section.rva, section.raw_size);
-    if (!bytes) continue;
-    for (std::size_t offset = 0;
-         offset + 12 <= bytes->size() && sources.size() < max_functions;
-         offset += 12) {
-      std::uint32_t begin = 0;
-      std::memcpy(&begin, bytes->data() + offset, sizeof(begin));
-      if (begin != 0) add_seed(begin, "unwind", image, pending, sources, max_functions);
-    }
+  for (const auto& function : image.runtime_functions()) {
+    if (sources.size() >= max_functions) break;
+    add_seed(function.begin_rva, "unwind", image, pending, sources, max_functions);
   }
 
   while (!pending.empty() && result.functions.size() < max_functions &&
@@ -160,7 +151,7 @@ std::expected<FunctionIndex, std::string> discover_functions(
     result.decoded_bytes += function->decoded_bytes;
     for (const auto& reference : function->references) {
       result.references.push_back({reference.from_rva, reference.to_rva, reference.type});
-      add_seed(reference.to_rva, "call", image, pending, sources, max_functions);
+      add_seed(reference.to_rva, reference.type, image, pending, sources, max_functions);
     }
   }
   std::ranges::sort(result.functions, {}, &IndexedFunction::rva);

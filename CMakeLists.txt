@@ -37,8 +37,14 @@ add_library(reverseplugin_sdk STATIC
   src/analysis/analysis_cache.cpp
   src/analysis/binary_image.cpp
   src/analysis/binary_store.cpp
+  src/analysis/decompiler.cpp
+  src/analysis/control_regions.cpp
   src/analysis/function_analyzer.cpp
+  src/analysis/register_model.cpp
+  src/analysis/ssa_builder.cpp
+  src/analysis/stack_analysis.cpp
   src/analysis/static_index.cpp
+  src/analysis/type_inference.cpp
   src/mcp/server.cpp
   src/mcp/tool_registry.cpp
   src/runtime/thread_pool.cpp
@@ -62,6 +68,7 @@ add_library(reverseplugin_sdk STATIC
   src/tools/debug_execution_tools.cpp
   src/tools/debug_stack_tools.cpp
   src/tools/binary_analysis_tools.cpp
+  src/tools/binary_decompiler_tools.cpp
   src/tools/binary_navigation_tools.cpp
   src/tools/binary_index_tools.cpp
   src/tools/engine_tools.cpp
