@@ -1,6 +1,6 @@
 {
   "name": "reverseplugin",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Native binary and game-engine analysis, process memory, and debugging tools exposed through MCP.",
   "author": {
     "name": "Stingeer01",

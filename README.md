@@ -32,7 +32,7 @@ The executable and internal C++ namespace retain the name `reverseplugin` for co
 Prebuilt Windows releases contain the MCP executable, plugin manifest, Skills, documentation, and third-party notices:
 
 - [Download the latest release](https://github.com/Stingeer01/ReverseMCP/releases/latest)
-- [View the v1.2.0 release notes and checksums](https://github.com/Stingeer01/ReverseMCP/releases/tag/v1.2.0)
+- [View the v1.3.0 release notes and checksums](https://github.com/Stingeer01/ReverseMCP/releases/tag/v1.3.0)
 
 Extract the archive and point the MCP client at `build/release/Release/reverseplugin-mcp.exe`. Build from source when changing the SDK or native tools.
 

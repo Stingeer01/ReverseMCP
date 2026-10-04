@@ -4,6 +4,8 @@ This project follows Semantic Versioning. Dates use ISO 8601.
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-10-04
+
 ### Added
 
 - `decompile_binary_function`, a bounded x86/x64 semantic decompiler with address-linked C-like pseudocode, canonical register slices, pruned inter-block register and memory SSA, phi nodes, normalized stack variables, ABI parameter candidates, natural-loop and conditional-region recovery, type/field evidence, confidence levels, and explicit unsupported-instruction intrinsics.
@@ -43,7 +45,8 @@ This project follows Semantic Versioning. Dates use ISO 8601.
 - Ten composable analysis skills covering native binaries, protected code, managed runtimes, Unity IL2CPP, Unreal Engine, Godot, and Source.
 - SDK, MCP, cache, debugger integration, knowledge validation, and high-volume stress tests.
 
-[Unreleased]: https://github.com/Stingeer01/ReverseMCP/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/Stingeer01/ReverseMCP/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/Stingeer01/ReverseMCP/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/Stingeer01/ReverseMCP/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/Stingeer01/ReverseMCP/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/Stingeer01/ReverseMCP/releases/tag/v1.0.0
